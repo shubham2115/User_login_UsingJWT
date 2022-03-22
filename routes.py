@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import request, jsonify, session, make_response
 from model import Users
-from Utils import token_required, get_token, url_short
+from Utils import token_required, get_token, url_short,activate_mail
 
 
 class Home(Resource):
@@ -15,17 +15,18 @@ class Logout(Resource):
     def get(self):
         user = session['Name']
         session['logged_in'] = False
-        return make_response(jsonify(message='Logged Out'), 200)
+        return make_response(jsonify(f"{user} You logged out"), 200)
 
 
 class Registration(Resource):
     def post(self):
         data_ = Users.objects()
-        username = request.form.get('UserName')
-        name = request.form.get('Name')
-        email = request.form.get('Email')
-        password1 = request.form.get('Password1')
-        password2 = request.form.get('Password2')
+        dataDict = request.get_json()
+        username = dataDict['UserName']
+        name = dataDict['Name']
+        email = dataDict['Email']
+        password1 = dataDict['Password1']
+        password2 = dataDict['Password2']
         session['logged_in'] = False
         if not password2 == password1:
             return make_response(jsonify(message='Password1 and Password2 must be same'), 409)
@@ -34,6 +35,10 @@ class Registration(Resource):
             if itr.UserName == data.UserName:
                 return make_response(jsonify(message='UserName Already Taken'), 409)
         data.save()
+        token = get_token(username)
+        short_token = url_short(token)
+        token_url = r'http://127.0.0.1:90/activate?token=' + f'{short_token}'
+        activate_mail(email, token_url, name)
         return make_response(jsonify(message='User Created Check your registered Email to activate account'), 200)
 
 
